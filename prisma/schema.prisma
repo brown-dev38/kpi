@@ -1,0 +1,476 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model academic_year {
+  id          Int      @id @default(autoincrement())
+  year        Int
+  semester    Int
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+}
+
+model fiscal_year {
+  id        Int      @id @default(autoincrement())
+  year      Int
+  isActive  Boolean  @default(true)
+  emp_id    Int
+  create_at DateTime @db.DateTime(0)
+  update_at DateTime @db.DateTime(0)
+}
+
+model users {
+  id                  Int       @id @default(autoincrement())
+  refId               String?   @unique @db.VarChar(191)
+  username            String    @db.Text
+  email               String?   @unique @db.VarChar(191)
+  passwordHash        String?   @db.VarChar(255)
+  emailVerifiedAt     DateTime? @db.DateTime(0)
+  passwordChangedAt   DateTime? @db.DateTime(0)
+  lastLoginAt         DateTime? @db.DateTime(0)
+  mustChangePassword  Boolean   @default(false)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime? @db.DateTime(0)
+  cid                 String?   @db.Text
+  first_name          String?   @db.Text
+  last_name           String?   @db.Text
+  roleid              Int?
+  depid               Int?
+  posid               Int?
+  isActive            Boolean   @default(true)
+  createat            DateTime  @db.DateTime(0)
+  updateat            DateTime  @db.DateTime(0)
+
+  role                   role?                 @relation(fields: [roleid], references: [id])
+  department             department?           @relation(fields: [depid], references: [id])
+  position               position?             @relation(fields: [posid], references: [id])
+  empKpiMain             kpi_main[]
+  empKpiSubs             kpi_sub[]
+  empKpiIndicatorUsers   kpi_indicator_user[]  @relation("empKpiIndicatorUsers")
+  staffKpiIndicatorUsers kpi_indicator_user[]  @relation("staffKpiIndicatorUsers")
+  kpiIndicatorGuides     kpi_indicator_guide[]
+  kpiIndicatorRefs       kpi_indicator_ref[]
+  staffs                 staff[]
+  kpiResearchUsers       kpi_research_user[]
+  kpiAdminUsers          kpi_admin_user[]
+}
+
+model staff {
+  id       Int      @id @default(autoincrement())
+  staffid  Int
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  staffDetail users? @relation(fields: [staffid], references: [id])
+}
+
+model department {
+  id       Int      @id @default(autoincrement())
+  name     String   @db.Text
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  users users[]
+}
+
+model kpi_main {
+  id       Int      @id @default(autoincrement())
+  name     String   @db.Text
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  employees            users?                   @relation(fields: [empid], references: [id])
+  kpiSubs              kpi_sub[]
+  kpiIndicator         kpi_indicator[]
+  kpiIndicatorResponse kpi_indicator_response[]
+}
+
+model kpi_indicator {
+  id        Int      @id @default(autoincrement())
+  mainid    Int
+  subid     Int?
+  name      String   @db.Text
+  resource  String   @db.Text
+  period    period
+  condition String   @db.Text
+  target    Decimal  @db.Decimal(12, 2)
+  unit      String   @db.Text
+  dividend  String   @db.Text
+  divisor   String   @db.Text
+  isActive  Boolean  @default(true)
+  empid     Int
+  createat  DateTime @db.DateTime(0)
+  updateat  DateTime @db.DateTime(0)
+
+  kpiMain              kpi_main?                @relation(fields: [mainid], references: [id])
+  kpiSub               kpi_sub?                 @relation(fields: [subid], references: [id])
+  kpiIndicatorUser     kpi_indicator_user[]
+  kpiIndicatorGuide    kpi_indicator_guide[]
+  kpiIndicatorRefs     kpi_indicator_ref[]
+  kpiIndicatorAnswer   kpi_indicator_answer[]
+  kpiIndicatorResponse kpi_indicator_response[]
+  kpiIndicatorPrograms kpi_indicator_program[]
+}
+
+model kpi_indicator_answer {
+  id          Int      @id @default(autoincrement())
+  responseid  Int
+  indicatorid Int
+  dividend    Decimal  @db.Decimal(12, 2)
+  divisor     Decimal  @db.Decimal(12, 2)
+  createat    DateTime @db.DateTime(0)
+  updateat    DateTime @db.DateTime(0)
+
+  kpiIndicator         kpi_indicator?          @relation(fields: [indicatorid], references: [id])
+  kpiIndicatorResponse kpi_indicator_response? @relation(fields: [responseid], references: [id])
+}
+
+model kpi_indicator_guide {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  name        String   @db.Text
+  isActive    Boolean  @default(true)
+  empid       Int
+  createat    DateTime @db.DateTime(0)
+  updateat    DateTime @db.DateTime(0)
+
+  kpiIndicator kpi_indicator? @relation(fields: [indicatorid], references: [id])
+  users        users?         @relation(fields: [empid], references: [id])
+}
+
+model kpi_indicator_ref {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  name        String   @db.Text
+  url         String   @db.Text
+  isActive    Boolean  @default(true)
+  empid       Int
+  createat    DateTime @db.DateTime(0)
+  updateat    DateTime @db.DateTime(0)
+
+  kpiIndicator kpi_indicator? @relation(fields: [indicatorid], references: [id])
+  users        users?         @relation(fields: [empid], references: [id])
+}
+
+model kpi_indicator_response {
+  id          Int      @id @default(autoincrement())
+  year        Int
+  semester    Int
+  period      period
+  mainid      Int
+  indicatorid Int
+  // 1 = "ไม่แยกหลักสูตร" (seeded in prisma/manual-migrations/add_program.sql)
+  programid   Int      @default(1)
+  isActive    Boolean  @default(true)
+  empid       Int
+  createat    DateTime @db.DateTime(0)
+  updateat    DateTime @db.DateTime(0)
+
+  kpiMain            kpi_main?              @relation(fields: [mainid], references: [id])
+  kpiIndicator       kpi_indicator?         @relation(fields: [indicatorid], references: [id])
+  program            program                @relation(fields: [programid], references: [id])
+  kpiIndicatorAnswer kpi_indicator_answer[]
+
+  @@unique([indicatorid, year, semester, programid])
+}
+
+model program {
+  id       Int      @id @default(autoincrement())
+  name     String   @db.Text
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  kpiIndicatorPrograms kpi_indicator_program[]
+  kpiIndicatorResponse kpi_indicator_response[]
+  kpiIndicatorUsers    kpi_indicator_user[]
+}
+
+model kpi_indicator_program {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  programid   Int
+  isActive    Boolean  @default(true)
+  empid       Int
+  createat    DateTime @db.DateTime(0)
+  updateat    DateTime @db.DateTime(0)
+
+  kpiIndicator kpi_indicator @relation(fields: [indicatorid], references: [id])
+  program      program       @relation(fields: [programid], references: [id])
+
+  @@unique([indicatorid, programid])
+}
+
+model kpi_indicator_user {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  staffid     Int
+  // 1 = รับผิดชอบทุกหลักสูตร (หรือตัวชี้วัดที่ไม่แยกหลักสูตร)
+  // อื่นๆ = รับผิดชอบเฉพาะหลักสูตรนั้น (prisma/manual-migrations/add_indicator_user_program.sql)
+  programid   Int      @default(1)
+  isActive    Boolean  @default(true)
+  empid       Int
+  createat    DateTime @db.DateTime(0)
+  updateat    DateTime @db.DateTime(0)
+
+  staff        users?         @relation(fields: [staffid], references: [id], name: "staffKpiIndicatorUsers")
+  employees    users?         @relation(fields: [empid], references: [id], name: "empKpiIndicatorUsers")
+  kpiIndicator kpi_indicator? @relation(fields: [indicatorid], references: [id])
+  program      program        @relation(fields: [programid], references: [id])
+}
+
+model kpi_sub {
+  id       Int      @id @default(autoincrement())
+  name     String   @db.Text
+  mainid   Int
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  employees     users?          @relation(fields: [empid], references: [id])
+  kpiMain       kpi_main?       @relation(fields: [mainid], references: [id])
+  kpiIndicators kpi_indicator[]
+}
+
+model position {
+  id       Int      @id @default(autoincrement())
+  name     String   @db.Text
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  users users[]
+}
+
+model research_main {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.Text
+  isActive  Boolean  @default(true)
+  emp_id    Int
+  create_at DateTime @db.DateTime(0)
+  update_at DateTime @db.DateTime(0)
+
+  kpi_research kpi_research[]
+}
+
+model kpi_research {
+  id        Int      @id @default(autoincrement())
+  mainid    Int
+  name      String   @db.Text
+  resource  String   @db.Text
+  period    period
+  condition String   @db.Text
+  target    Decimal  @db.Decimal(12, 2)
+  unit      String   @db.Text
+  dividend  String   @db.Text
+  divisor   String?  @db.Text
+  isActive  Boolean  @default(true)
+  emp_id    Int
+  create_at DateTime @db.DateTime(0)
+  update_at DateTime @db.DateTime(0)
+
+  research_main        research_main?          @relation(fields: [mainid], references: [id])
+  kpi_research_answer  kpi_research_answer[]
+  kpiResearchGuides    kpi_research_guide[]
+  kpiResearchRefs      kpi_research_ref[]
+  kpiResearchResponses kpi_research_response[]
+  kpiResearchUsers     kpi_research_user[]
+}
+
+model kpi_research_answer {
+  id          Int      @id @default(autoincrement())
+  responseid  Int
+  indicatorid Int
+  dividend    Decimal  @db.Decimal(12, 2)
+  divisor     Decimal? @db.Decimal(12, 2)
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_research kpi_research? @relation(fields: [indicatorid], references: [id])
+}
+
+model kpi_research_guide {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  name        String   @db.Text
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_research kpi_research? @relation(fields: [indicatorid], references: [id])
+}
+
+model kpi_research_ref {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  name        String   @db.Text
+  url         String   @db.Text
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_research kpi_research? @relation(fields: [indicatorid], references: [id])
+}
+
+model kpi_research_response {
+  id          Int      @id @default(autoincrement())
+  year        Int
+  mainid      Int
+  indicatorid Int
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_research kpi_research? @relation(fields: [mainid], references: [id])
+
+  @@unique([indicatorid, year])
+}
+
+model kpi_research_user {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  staff_id    Int
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_research kpi_research? @relation(fields: [indicatorid], references: [id])
+  staff        users?        @relation(fields: [staff_id], references: [id])
+}
+
+model admin_main {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.Text
+  isActive  Boolean  @default(true)
+  emp_id    Int
+  create_at DateTime @db.DateTime(0)
+  update_at DateTime @db.DateTime(0)
+
+  kpi_admin kpi_admin[]
+}
+
+model kpi_admin {
+  id        Int      @id @default(autoincrement())
+  mainid    Int
+  name      String   @db.Text
+  resource  String   @db.Text
+  period    period
+  condition String   @db.Text
+  target    Decimal  @db.Decimal(12, 2)
+  unit      String   @db.Text
+  dividend  String   @db.Text
+  divisor   String?  @db.Text
+  isActive  Boolean  @default(true)
+  emp_id    Int
+  create_at DateTime @db.DateTime(0)
+  update_at DateTime @db.DateTime(0)
+
+  admin_main        admin_main?          @relation(fields: [mainid], references: [id])
+  kpi_admin_answer  kpi_admin_answer[]
+  kpiAdminGuides    kpi_admin_guide[]
+  kpiAdminRefs      kpi_admin_ref[]
+  kpiAdminResponses kpi_admin_response[]
+  kpiAdminUsers     kpi_admin_user[]
+}
+
+model kpi_admin_answer {
+  id          Int      @id @default(autoincrement())
+  responseid  Int
+  indicatorid Int
+  dividend    Decimal  @db.Decimal(12, 2)
+  divisor     Decimal? @db.Decimal(12, 2)
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_admin kpi_admin? @relation(fields: [indicatorid], references: [id])
+}
+
+model kpi_admin_guide {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  name        String   @db.Text
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_admin kpi_admin? @relation(fields: [indicatorid], references: [id])
+}
+
+model kpi_admin_ref {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  name        String   @db.Text
+  url         String   @db.Text
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_admin kpi_admin? @relation(fields: [indicatorid], references: [id])
+}
+
+model kpi_admin_response {
+  id          Int      @id @default(autoincrement())
+  year        Int
+  mainid      Int
+  indicatorid Int
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_admin kpi_admin? @relation(fields: [mainid], references: [id])
+
+  @@unique([indicatorid, year])
+}
+
+model kpi_admin_user {
+  id          Int      @id @default(autoincrement())
+  indicatorid Int
+  staff_id    Int
+  isActive    Boolean  @default(true)
+  emp_id      Int
+  create_at   DateTime @db.DateTime(0)
+  update_at   DateTime @db.DateTime(0)
+
+  kpi_admin kpi_admin? @relation(fields: [indicatorid], references: [id])
+  staff     users?     @relation(fields: [staff_id], references: [id])
+}
+
+model role {
+  id       Int      @id @default(autoincrement())
+  name     String   @db.Text
+  isActive Boolean  @default(true)
+  empid    Int
+  createat DateTime @db.DateTime(0)
+  updateat DateTime @db.DateTime(0)
+
+  users users[]
+}
+
+enum period {
+  SEMESTER
+  ANNUAL
+}
